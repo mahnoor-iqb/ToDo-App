@@ -1,3 +1,5 @@
 venv/*
 virtual-environment-name/*
 migrations/*
+*/__pycache__/*
+.idea/*
