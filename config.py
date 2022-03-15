@@ -1,5 +1,4 @@
-import os
-#SECRET_KEY = os.urandom(32)  
+import os 
 
 # Grabs the folder where the script runs.
 basedir = os.path.abspath(os.path.dirname(__file__))  
@@ -12,3 +11,9 @@ SQLALCHEMY_DATABASE_URI = 'sqlite:///'+os.path.join(basedir,'todo.sqlite')
 
 # Turn off the Flask-SQLAlchemy event system and warning
 SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+SESSION_TYPE = 'filesystem'
+
+SECRET_KEY = os.urandom(32) 
+
+

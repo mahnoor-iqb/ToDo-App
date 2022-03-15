@@ -1,8 +1,10 @@
 from flask import Blueprint
 
-from controllers.user_controller import show_all, add, show
+from controllers.user_controller import show_all_users, add_user, show_user, delete_user, update_user
 
 user_bp = Blueprint('user_bp', __name__)
-user_bp.route('/', methods=['GET'])(show_all)
-user_bp.route('/', methods=['POST'])(add)
-user_bp.route('/<int:user_id>', methods=['GET'])(show)
+user_bp.route('/', methods=['GET'])(show_all_users)
+user_bp.route('/', methods=['POST'])(add_user)
+user_bp.route('/<int:user_id>', methods=['GET'])(show_user)
+user_bp.route('/<int:user_id>', methods=['DELETE'])(delete_user)
+user_bp.route('/', methods=['PUT'])(update_user)
