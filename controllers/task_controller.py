@@ -1,4 +1,4 @@
-from flask import request, send_from_directory
+from flask import request, send_file
 import datetime
 from models.task import Task
 from flask_sqlalchemy import SQLAlchemy
@@ -9,20 +9,14 @@ import os
 db = SQLAlchemy()
 
 
-"""
-Get all tasks from the database
-"""
-
+"""Get all tasks from the database"""
 @login_required
 def show_all_tasks():
     data = Task.query.filter_by(user_id=current_user.id)
     return build_response(success=True, payload=[i.serialize for i in data], error="")
 
 
-"""
-Get task having the provided id from the database
-"""
-
+"""Get task having the provided id from the database"""
 @login_required
 def show_task(task_id):
     task = Task.query.get(task_id)
@@ -35,10 +29,7 @@ def show_task(task_id):
     return build_response(success=True, payload=task.serialize, error="")
 
 
-"""
-Add a task to the database
-"""
-
+"""Add a task to the database"""
 @login_required
 def add_task():
     title = request.json["title"]
@@ -70,23 +61,10 @@ def add_task():
     db.session.add(task)
     db.session.commit()
 
-    added_task = {
-        "title": title,
-        "description": description,
-        "creation_date": creation_date,
-        "due_date": due_date,
-        "completion_date": completion_date,
-        "completion_status": completion_status,
-        "user_id": current_user.id
-    }
-
-    return build_response(success=True, payload=added_task, error="")
+    return build_response(success=True, payload=task.serialize, error="")
 
 
-"""
-Delete a task from the database
-"""
-
+"""Delete a task from the database"""
 @login_required
 def delete_task(task_id):
     task = Task.query.get(task_id)
@@ -103,10 +81,7 @@ def delete_task(task_id):
     return build_response(success=True, payload=f"Task {task_id} deleted", error="")
 
 
-"""
-Find task with the provided id and update it
-"""
-
+"""Find task with the provided id and update it"""
 @login_required
 def update_task(task_id):
     task = Task.query.filter_by(id=task_id).first()
@@ -137,24 +112,11 @@ def update_task(task_id):
     db.session.merge(task)
     db.session.commit()
 
-    updated_task = {
-        "title": task.title,
-        "description": task.description,
-        "file_attachment": task.file_attachment,
-        "creation_date": task.creation_date,
-        "due_date": task.due_date,
-        "completion_date": task.completion_date,
-        "completion_status": task.completion_status,
-        "user_id": task.user_id
-    }
 
-    return build_response(success=True, payload=updated_task, error="")
+    return build_response(success=True,payload=task.serialize, error="")
 
 
-"""
-Store file attachment on the server
-"""
-
+"""Store file attachment on the server"""
 @login_required
 def attach_file(task_id):
     task = Task.query.filter_by(id=task_id).first()
@@ -179,24 +141,10 @@ def attach_file(task_id):
     db.session.merge(task)
     db.session.commit()
 
-    updated_task = {
-        "title": task.title,
-        "description": task.description,
-        "file_attachment": task.file_attachment,
-        "due_date": task.due_date,
-        "creation_date": task.creation_date,
-        "due_date": task.due_date,
-        "completion_date": task.completion_date,
-        "completion_status": task.completion_status,
-        "user_id": task.user_id
-    }
+    return build_response(success=True, payload=task.serialize, error="")
 
-    return build_response(success=True, payload=updated_task, error="")
 
-"""
-Download file attachment from the server
-"""
-
+"""Download file attachment from the server"""
 @login_required
 def download_file(task_id):
     task = Task.query.get(task_id)
@@ -208,4 +156,5 @@ def download_file(task_id):
         return build_response(success=False, payload="", error="Permission Denied!")
 
     user_dir = "/home/emumba/Desktop/ToDo-App/Downloads/user"+str(task.user_id)
-    return send_from_directory(user_dir, task.file_attachment)
+
+    return send_file(user_dir+ "/"+task.file_attachment, as_attachment=True)

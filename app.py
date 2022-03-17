@@ -1,4 +1,4 @@
-from flask import Flask, session, request, session
+from flask import Flask, session, request
 from flask_session import Session
 from flask_migrate import Migrate
 from flask_login import LoginManager, login_user, logout_user, login_required
@@ -12,11 +12,10 @@ from routes.task_route import task_bp
 from utils.utils import build_response
 
 
-# init app
+
 app = Flask(__name__)
 app.config.from_object('config')
 
-# init db
 db.init_app(app)
 migrate = Migrate(app, db)
 
@@ -39,7 +38,7 @@ app.register_blueprint(task_bp, url_prefix='/tasks')
 
 @app.route('/signup', methods=['POST'])
 def register():
-    email = request.form["email"]
+    email = request.json["email"]
 
     user_exists = User.query.filter_by(email=email).first()
 
@@ -47,9 +46,9 @@ def register():
         return build_response(success=False, payload="", error="User email already exists!")
 
     hashed_password = generate_password_hash(
-        request.form['password'], method='sha256')
+        request.json['password'], method='sha256')
 
-    user = User(email=email, password=hashed_password, admin=False)
+    user = User(email=email, password=hashed_password, admin=False, email_activated = False)
     db.session.add(user)
     db.session.commit()
 
@@ -58,10 +57,10 @@ def register():
 
 @app.route('/login', methods=['POST'])
 def login():
-    user_email = request.form['email']
+    user_email = request.json['email']
     user = User.query.filter_by(email=user_email).first()
 
-    password = request.form['password']
+    password = request.json['password']
 
     if check_password_hash(user.password, password):
         session["user"] = user.id
@@ -92,7 +91,7 @@ def handle_exception(e):
 
 @app.route('/')
 def home():
-    return build_response(success=False, payload="Welcome to Todo App", error="")
+    return build_response(success=True, payload="Welcome to Todo App", error="")
 
 
 if __name__ == "__main__":
