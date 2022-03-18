@@ -1,16 +1,17 @@
-from flask import Flask, session, request
+from flask import Flask, session, request, url_for
 from flask_session import Session
 from flask_migrate import Migrate
-from flask_login import LoginManager, login_user, logout_user, login_required
+from flask_login import LoginManager, current_user, login_user, logout_user, login_required
 from models.user import db, User
 from werkzeug.exceptions import HTTPException
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_mail import Mail, Message
+from itsdangerous import URLSafeTimedSerializer
 import os
 
 from routes.user_route import user_bp
 from routes.task_route import task_bp
 from utils.utils import build_response
-
 
 
 app = Flask(__name__)
@@ -21,6 +22,9 @@ migrate = Migrate(app, db)
 
 Session(app)
 app.secret_key = os.urandom(32)
+
+mail = Mail(app)
+serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
 login_manager = LoginManager()
 login_manager.login_view = 'login'
@@ -48,11 +52,41 @@ def register():
     hashed_password = generate_password_hash(
         request.json['password'], method='sha256')
 
-    user = User(email=email, password=hashed_password, admin=False, email_activated = False)
+    token = serializer.dumps(email)
+    msg = Message("Email Confirmation",
+                  sender="testmahnoor@gmail.com", recipients=[email])
+    link = url_for('confirm_email', token=token, _external=True)
+    msg.body = f"Confirm your email address: {link}"
+    mail.send(msg)
+
+    user = User(email=email, password=hashed_password,
+                admin=False, activated=False)
     db.session.add(user)
     db.session.commit()
 
-    return build_response(success=True, payload="Sign up Successful!", error="")
+    return build_response(success=True, payload="Confirmation email has been sent. Please confirm your email.", error="")
+
+
+@app.route('/email-confirmation/<token>', methods=['GET'])
+def confirm_email(token):
+    try:
+        email = serializer.loads(
+                token,
+                max_age=3600
+            )
+    except:
+        return build_response(success=False, payload="", error="The confirmation link is invalid or has expired.")
+    
+    user = User.query.filter_by(email=email).first()
+
+    if user.activated:
+        return build_response(success=False, payload="", error="User already activated.")
+
+    user.activated = 1
+
+    db.session.merge(user)
+    db.session.commit()
+    return build_response(success=True, payload="Email Confirmed!", error="")
 
 
 @app.route('/login', methods=['POST'])
