@@ -9,7 +9,7 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(100))
     password = db.Column(db.String(100))   
     admin = db.Column(db.Boolean)
-    email_activated =  db.Column(db.Boolean)
+    activated =  db.Column(db.Boolean)
     tasks = db.relationship('Task')
 
     @property
@@ -19,5 +19,5 @@ class User(UserMixin, db.Model):
             'email': self.email,
             'password': self.password,
             'admin': self.admin,
-            'email_activated': self.email_activated
+            'activated': self.activated
         }
