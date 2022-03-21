@@ -1,4 +1,3 @@
-from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from models.user import db
 
@@ -14,7 +13,9 @@ class Task(db.Model):
     completion_date = db.Column(db.DateTime(timezone = True))
     completion_status = db.Column(db.Boolean)
 
+    file_attachment = db.Column(db.String(1000))
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+
 
     @property
     def serialize(self):
@@ -26,7 +27,7 @@ class Task(db.Model):
             'due_date': self.due_date,
             'completion_date': self.completion_date,
             'completion_status': self.completion_status,
-            'user_id': self.user_id,
-
+            'file_attachment': self.file_attachment,
+            'user_id': self.user_id
         }
 
