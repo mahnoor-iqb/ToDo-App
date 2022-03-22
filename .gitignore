@@ -4,3 +4,5 @@ migrations/*
 */__pycache__/*
 .idea/*
 __pycache__/*
+Downloads/*
+flask_session/*

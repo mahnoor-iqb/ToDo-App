@@ -7,7 +7,7 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 DEBUG = True
 
 # Connect to the database
-SQLALCHEMY_DATABASE_URI = 'sqlite:///'+os.path.join(basedir, 'todo.sqlite')
+SQLALCHEMY_DATABASE_URI = 'sqlite:///'+os.path.join(basedir, 'todo.sqlite')+'?check_same_thread=False'
 
 # Turn off the Flask-SQLAlchemy event system and warning
 SQLALCHEMY_TRACK_MODIFICATIONS = False
