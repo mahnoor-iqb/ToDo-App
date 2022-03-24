@@ -12,7 +12,7 @@ import os
 
 from routes.user_route import user_bp
 from routes.task_route import task_bp
-from utils.utils import build_response, token_required
+from utils.utils import build_response
 
 
 app = Flask(__name__)
@@ -83,6 +83,11 @@ def confirm_email(token):
 def login():
     user_email = request.json['email']
     user = User.query.filter_by(email=user_email).first()
+
+    if not user.activated:
+        return build_response(success=False, payload="",
+                          error="Please verify your email before logging in.")
+
 
     password = request.json['password']
 
