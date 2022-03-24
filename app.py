@@ -1,12 +1,13 @@
-from flask import Flask, session, request, url_for
-from flask_session import Session
+from flask import Flask, request, url_for
 from flask_migrate import Migrate
-from flask_login import LoginManager, current_user, login_user, logout_user, login_required
 from models.user import db, User
+from models.session import Session
 from werkzeug.exceptions import HTTPException
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
+import jwt
+from datetime import timedelta, datetime
 import os
 
 from routes.user_route import user_bp
@@ -20,21 +21,10 @@ app.config.from_object('config')
 db.init_app(app)
 migrate = Migrate(app, db)
 
-Session(app)
 app.secret_key = os.urandom(32)
 
 mail = Mail(app)
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
-
-login_manager = LoginManager()
-login_manager.login_view = 'login'
-login_manager.init_app(app)
-
-
-@login_manager.user_loader
-def load_user(id):
-    return User.query.get(id)
-
 
 app.register_blueprint(user_bp, url_prefix='/users')
 app.register_blueprint(task_bp, url_prefix='/tasks')
@@ -71,16 +61,16 @@ def register():
 def confirm_email(token):
     try:
         email = serializer.loads(
-                token,
-                max_age=3600
-            )
+            token,
+            max_age=3600
+        )
     except:
         return build_response(success=False, payload="", error="The confirmation link is invalid or has expired.")
-    
+
     user = User.query.filter_by(email=email).first()
 
     if user.activated:
-        return build_response(success=False, payload="", error="User already activated.")
+        return build_response(success=True, payload="", error="User already activated.")
 
     user.activated = 1
 
@@ -94,30 +84,55 @@ def login():
     user_email = request.json['email']
     user = User.query.filter_by(email=user_email).first()
 
+    if not user.activated:
+        return build_response(success=False, payload="",
+                          error="Please verify your email before logging in.")
+
+
     password = request.json['password']
 
     if check_password_hash(user.password, password):
-        session["user"] = user.id
-        login_user(user)
-        return build_response(success=True, payload="Login Successful!", error="")
+        token = jwt.encode({
+            'user_id': user.id,
+            'exp': datetime.utcnow() + timedelta(hours=1)
+        }, app.config['SECRET_KEY'])
+
+        #Convert token to string
+        token = token.decode("utf-8") 
+
+        session = Session(id=token, user_id=user.id)
+        db.session.add(session)
+        db.session.commit()
+        res = build_response(
+            success=True, payload="Login Successful!", error="")
+        res.set_cookie('access_token', token)
+        return res
 
     return build_response(success=False, payload="",
                           error="Please check your login credentials!")
 
 
 @app.route('/logout')
-@login_required
 def logout():
-    session.pop('user', None)
-    logout_user()
-    return build_response(success=True, payload="Logged Out!", error="")
+    token = request.cookies.get('access_token') 
+
+    if not token:
+            return build_response(success=False, payload="", error="Access token not provided!")   
+
+    sess = Session.query.filter_by(id=token).first()
+    db.session.delete(sess)
+    db.session.commit()
+    res = build_response(success=True, payload="Logged Out!", error="")
+    res.delete_cookie('access_token')
+
+    return res
 
 
 @app.errorhandler(404)
 def page_not_found(e):
     return build_response(success=False, payload={}, error=e.description)
 
-
+    
 @app.errorhandler(HTTPException)
 def handle_exception(e):
     return build_response(success=False, payload={}, error=e.description)

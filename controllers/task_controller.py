@@ -1,24 +1,24 @@
 from flask import request, send_file
 import datetime
 from models.task import Task
+from models.session import Session
 from flask_sqlalchemy import SQLAlchemy
-from utils.utils import build_response
-from flask_login import current_user, login_required
+from utils.utils import build_response, token_required
 import os
 
 db = SQLAlchemy()
 
 
 """Get all tasks from the database"""
-@login_required
-def show_all_tasks():
+@token_required
+def show_all_tasks(current_user):  
     data = Task.query.filter_by(user_id=current_user.id)
     return build_response(success=True, payload=[i.serialize for i in data], error="")
 
 
 """Get task having the provided id from the database"""
-@login_required
-def show_task(task_id):
+@token_required
+def show_task(current_user, task_id):
     task = Task.query.get(task_id)
 
     if not task:
@@ -30,8 +30,8 @@ def show_task(task_id):
 
 
 """Add a task to the database"""
-@login_required
-def add_task():
+@token_required
+def add_task(current_user):
     title = request.json["title"]
     description = request.json["description"]
 
@@ -65,8 +65,8 @@ def add_task():
 
 
 """Delete a task from the database"""
-@login_required
-def delete_task(task_id):
+@token_required
+def delete_task(current_user, task_id):
     task = Task.query.get(task_id)
 
     if not task:
@@ -82,8 +82,8 @@ def delete_task(task_id):
 
 
 """Find task with the provided id and update it"""
-@login_required
-def update_task(task_id):
+@token_required
+def update_task(current_user, task_id):
     task = Task.query.filter_by(id=task_id).first()
 
     if not task:
@@ -117,8 +117,8 @@ def update_task(task_id):
 
 
 """Store file attachment on the server"""
-@login_required
-def attach_file(task_id):
+@token_required
+def attach_file(current_user, task_id):
     task = Task.query.filter_by(id=task_id).first()
 
     if not task:
@@ -145,8 +145,8 @@ def attach_file(task_id):
 
 
 """Download file attachment from the server"""
-@login_required
-def download_file(task_id):
+@token_required
+def download_file(current_user, task_id):
     task = Task.query.get(task_id)
 
     if not task:
