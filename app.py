@@ -1,4 +1,4 @@
-from flask import Flask, request, url_for
+from flask import Flask, redirect, request, url_for
 from flask_migrate import Migrate
 from models.user import db, User
 from models.session import Session
@@ -126,11 +126,29 @@ def forgot_password():
     msg = Message("Reset Password",
                   sender="testmahnoor@gmail.com", recipients=[email])
 
-    link = url_for('reset_password', token=token, _external=True)
+    link = url_for('validate_reset_password', token=token, _external=True)
     msg.body = f"Reset Password: {link}"
     mail.send(msg)
 
     return build_response(success=True, payload="Please follow the link sent to your email address to proceed.", error="")
+
+
+@app.route('/validate-reset-password/<token>', methods=['GET'])
+def validate_reset_password(token):
+    try:
+        email = serializer.loads(
+            token,
+            max_age=3600
+        )
+    except:
+        return build_response(success=False, payload="", error="The forgot password link is invalid or has expired.")
+
+    user = User.query.filter_by(email=email).first()
+
+    if not user:
+        return build_response(success=False, payload="", error="User doesn't exist")
+    
+    return build_response(success=True, payload="Verified!" , error="")
 
 
 @app.route('/reset-password/<token>', methods=['POST'])
@@ -144,10 +162,6 @@ def reset_password(token):
         return build_response(success=False, payload="", error="The forgot password link is invalid or has expired.")
 
     user = User.query.filter_by(email=email).first()
-
-    if not user:
-        return build_response(success=False, payload="", error="User doesn't exist")
-
     hashed_password = generate_password_hash(
         request.json['password'], method='sha256')
 
@@ -155,7 +169,7 @@ def reset_password(token):
     db.session.merge(user)
     db.session.commit()
 
-    return build_response(success=True, payload=user.serialize, error="")
+    return build_response(success=True, payload="Password reset successful!", error="")
 
 
 @app.route('/logout')

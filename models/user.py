@@ -20,7 +20,6 @@ class User(UserMixin, db.Model):
         return {
             'id': self.id,
             'email': self.email,
-            'password': self.password,
             'admin': self.admin,
             'activated': self.activated
         }
