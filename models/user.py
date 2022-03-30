@@ -11,8 +11,10 @@ class User(UserMixin, db.Model):
     password = db.Column(db.String(100))   
     admin = db.Column(db.Boolean)
     activated =  db.Column(db.Boolean)
+    oauth = db.Column(db.Boolean)
     tasks = db.relationship('Task')
     session = db.relationship('Session')
+    
 
 
     @property
@@ -21,5 +23,6 @@ class User(UserMixin, db.Model):
             'id': self.id,
             'email': self.email,
             'admin': self.admin,
-            'activated': self.activated
+            'activated': self.activated,
+            'oauth': self.oauth
         }

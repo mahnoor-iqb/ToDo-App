@@ -8,11 +8,16 @@ from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
 import jwt
 from datetime import timedelta, datetime
+from google_auth_oauthlib.flow import Flow
 import os
-
+import pathlib
 from routes.user_route import user_bp
 from routes.task_route import task_bp
 from utils.utils import build_response
+from pip._vendor import cachecontrol
+import google.auth.transport.requests
+from google.oauth2 import id_token
+import requests
 
 
 app = Flask(__name__)
@@ -23,12 +28,77 @@ migrate = Migrate(app, db)
 
 app.secret_key = os.urandom(32)
 
+os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
+
 mail = Mail(app)
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
 
 app.register_blueprint(user_bp, url_prefix='/users')
 app.register_blueprint(task_bp, url_prefix='/tasks')
+
+GOOGLE_CLIENT_ID = "809764277850-nh1et6mh6crfkab9jb9tgdd1t8of9kvl.apps.googleusercontent.com"
+
+client_secrets_file = os.path.join(
+    pathlib.Path(__file__).parent, "client_secret.json")
+
+flow = Flow.from_client_secrets_file(client_secrets_file=client_secrets_file,
+                                     scopes=["https://www.googleapis.com/auth/userinfo.profile",
+                                             "https://www.googleapis.com/auth/userinfo.email", "openid"],
+                                     redirect_uri="http://127.0.0.1:5000/google-login-callback")
+
+
+@app.route('/login-with-google')
+def login_with_google():
+    authorization_url = flow.authorization_url()
+    return redirect(authorization_url[0])
+
+
+@app.route('/google-login-callback')
+def callback():
+    flow.fetch_token(authorization_response=request.url)
+
+    credentials = flow.credentials
+    request_session = requests.session()
+    cached_session = cachecontrol.CacheControl(request_session)
+    token_request = google.auth.transport.requests.Request(
+        session=cached_session)
+
+    account = id_token.verify_oauth2_token(
+        id_token=credentials._id_token,
+        request=token_request,
+        audience=GOOGLE_CLIENT_ID
+    )
+
+    oauth_user = User.query.filter_by(oauth=True).filter_by(
+        email=account.get("email")).first()
+
+    if not oauth_user:
+        user = User.query.filter_by(email=account.get("email")).first()
+        if user:
+            return build_response(success=False, payload="", error="User already exists!")
+
+        oauth_user = User(email=account.get("email"),
+                          password=None, admin=0, activated=1, oauth=1)
+        db.session.add(oauth_user)
+        db.session.commit()
+
+    # Log in user to the app
+    token = jwt.encode({
+        'user_id': oauth_user.id,
+        'exp': datetime.utcnow() + timedelta(days=1)
+    }, app.config['SECRET_KEY'])
+
+    # Convert token to string
+    token = token.decode("utf-8")
+
+    session = Session(id=token, user_id=oauth_user.id)
+    db.session.add(session)
+    db.session.commit()
+
+    res = build_response(success=True, payload="Login Successful!", error="")
+    res.set_cookie('access_token', token)
+    return res
 
 
 @app.route('/signup', methods=['POST'])
@@ -51,7 +121,7 @@ def register():
     mail.send(msg)
 
     user = User(email=email, password=hashed_password,
-                admin=False, activated=False)
+                admin=False, activated=False, oauth=False)
     db.session.add(user)
     db.session.commit()
 
@@ -94,7 +164,7 @@ def login():
     if check_password_hash(user.password, password):
         token = jwt.encode({
             'user_id': user.id,
-            'exp': datetime.utcnow() + timedelta(hours=1)
+            'exp': datetime.utcnow() + timedelta(days=1)
         }, app.config['SECRET_KEY'])
 
         # Convert token to string
@@ -116,10 +186,13 @@ def login():
 def forgot_password():
     email = request.json["email"]
 
-    user_exists = User.query.filter_by(email=email).first()
+    user = User.query.filter_by(email=email).first()
 
-    if not user_exists:
+    if not user:
         return build_response(success=False, payload="", error="User does not exist!")
+
+    if user.oauth:
+        return build_response(success=False, payload="", error="Users logged in with Google can't use this feature!")
 
     token = serializer.dumps(email)
 
@@ -147,8 +220,8 @@ def validate_reset_password(token):
 
     if not user:
         return build_response(success=False, payload="", error="User doesn't exist")
-    
-    return build_response(success=True, payload="Verified!" , error="")
+
+    return build_response(success=True, payload="Verified!", error="")
 
 
 @app.route('/reset-password/<token>', methods=['POST'])
@@ -200,7 +273,7 @@ def handle_exception(e):
 
 @app.route('/')
 def home():
-    return build_response(success=True, payload="Welcome to Todo App", error="")
+    return "<a href='/login-with-google'><button>Login With Google</button></a>"
 
 
 if __name__ == "__main__":
