@@ -31,3 +31,9 @@ def token_required(f):
         current_user = User.query.filter_by(id=data['user_id']).first()
         return f(current_user, *args, **kwargs)
     return decorated
+
+
+def is_same(a,b):
+    a= a.lower().split(" ")
+    b = b.lower().split(" ")
+    return set(a)<=set(b) or set(b)<=set(a)
