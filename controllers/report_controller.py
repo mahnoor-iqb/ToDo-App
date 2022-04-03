@@ -3,16 +3,19 @@ from flask_sqlalchemy import SQLAlchemy
 from utils.utils import build_response, token_required, is_same
 from collections import defaultdict
 import itertools
+import logging
 
 
 db = SQLAlchemy()
 
+logger = logging.getLogger(__name__)
 
 @token_required
 def count_tasks(current_user):
     total_tasks = Task.query.filter_by(user_id=current_user.id).count()
 
     if not total_tasks:
+        logger.error("No task found")
         return build_response(success=False, payload="", error="No task found")
 
     completed_tasks = Task.query.filter_by(
@@ -33,6 +36,7 @@ def get_average_tasks(current_user):
         user_id=current_user.id).all()
 
     if not result:
+        logger.error("No completed task found")
         return build_response(success=False, payload="", error="No completed task found")
 
     groupby_date = defaultdict(list)
@@ -54,6 +58,7 @@ def get_late_tasks(current_user):
         Task.completion_status == True).filter(Task.completion_date > Task.due_date).count()
     
     if not late_tasks:
+        logger.error("No late task found")
         return build_response(success=False, payload="", error="No late tasks found")
     
     return build_response(success=True, payload={"late_tasks": late_tasks}, error="")
@@ -65,6 +70,7 @@ def get_max_tasks_date(current_user):
         user_id=current_user.id).all()
 
     if not result:
+        logger.error("No completed task found")
         return build_response(success=False, payload="", error="No completed task found")
 
     groupby_date = defaultdict(list)
@@ -85,6 +91,7 @@ def get_weekly_tasks(current_user):
     tasks = Task.query.filter_by(user_id=current_user.id).all()
 
     if not tasks:
+        logger.error("No task found")
         return build_response(success=False, payload= "", error="No task found")
 
     week_days = {'Monday':0, 'Tuesday':0, 'Wednesday':0, 'Thursday':0, 'Friday':0, 'Saturday':0, 'Sunday':0}
@@ -101,6 +108,7 @@ def get_similar_tasks(current_user):
     tasks = Task.query.filter_by(user_id=current_user.id).all()
 
     if not tasks:
+        logger.error("No task found")
         return build_response(success=False, payload= "", error="No task found")
 
     similar_tasks = []

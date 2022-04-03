@@ -5,9 +5,11 @@ from models.session import Session
 from flask_sqlalchemy import SQLAlchemy
 from utils.utils import build_response, token_required
 import os
+import logging
 
 db = SQLAlchemy()
 
+logger = logging.getLogger(__name__)
 
 """Get all tasks from the database"""
 @token_required
@@ -22,10 +24,13 @@ def show_task(current_user, task_id):
     task = Task.query.get(task_id)
 
     if not task:
+        logger.error("Task does not exist")
         return build_response(success=False, payload="", error="Task doesn't exist!")
 
     if task.user_id != current_user.id:
+        logger.error("Permission denied")
         return build_response(success=False, payload="", error="Permission Denied!")
+
     return build_response(success=True, payload=task.serialize, error="")
 
 
@@ -61,6 +66,7 @@ def add_task(current_user):
     db.session.add(task)
     db.session.commit()
 
+    logger.info("New task added")
     return build_response(success=True, payload=task.serialize, error="")
 
 
@@ -70,14 +76,17 @@ def delete_task(current_user, task_id):
     task = Task.query.get(task_id)
 
     if not task:
+        logger.error("Task does not exist")
         return build_response(success=False, payload="", error="Task doesn't exist!")
 
     if task.user_id != current_user.id:
+        logger.error("Permission denied")
         return build_response(success=False, payload="", error="Permission Denied!")
 
     db.session.query(Task).filter(Task.id == task_id).delete()
     db.session.commit()
 
+    logger.info(f"Task {task_id} deleted")
     return build_response(success=True, payload=f"Task {task_id} deleted", error="")
 
 
@@ -87,9 +96,11 @@ def update_task(current_user, task_id):
     task = Task.query.filter_by(id=task_id).first()
 
     if not task:
+        logger.error("Task does not exist")
         return build_response(success=False, payload="", error="Task doesn't exist!")
 
     if task.user_id != current_user.id:
+        logger.error("Permission denied")
         return build_response(success=False, payload="", error="Permission Denied!")
 
     title = request.json["title"]
@@ -112,7 +123,7 @@ def update_task(current_user, task_id):
     db.session.merge(task)
     db.session.commit()
 
-
+    logger.info(f"Task {task.id} updated")
     return build_response(success=True,payload=task.serialize, error="")
 
 
@@ -122,9 +133,11 @@ def attach_file(current_user, task_id):
     task = Task.query.filter_by(id=task_id).first()
 
     if not task:
+        logger.error("Task does not exist")
         return build_response(success=False, payload="", error="Task doesn't exist!")
 
     if task.user_id != current_user.id:
+        logger.error("Permission denied")
         return build_response(success=False, payload="", error="Permission Denied!")
 
     file = request.files["file_attachment"]
@@ -141,6 +154,7 @@ def attach_file(current_user, task_id):
     db.session.merge(task)
     db.session.commit()
 
+    logger.info(f"File {task.file_attachment} attached with task {task.id}")
     return build_response(success=True, payload=task.serialize, error="")
 
 
@@ -150,11 +164,14 @@ def download_file(current_user, task_id):
     task = Task.query.get(task_id)
 
     if not task:
+        logger.error("Task doesn't exist")
         return build_response(success=False, payload="", error="Task doesn't exist!")
 
     if task.user_id != current_user.id:
+        logger.error("Permission denied")
         return build_response(success=False, payload="", error="Permission Denied!")
 
     user_dir = "/home/emumba/Desktop/ToDo-App/Downloads/user"+str(task.user_id)
 
+    logger.info("File download successful")
     return send_file(user_dir+ "/"+task.file_attachment, as_attachment=True)
