@@ -11,9 +11,6 @@ from datetime import timedelta, datetime
 from google_auth_oauthlib.flow import Flow
 import os
 import pathlib
-from routes.user_route import user_bp
-from routes.task_route import task_bp
-from routes.report_route import report_bp
 from utils.utils import build_response
 from pip._vendor import cachecontrol
 import google.auth.transport.requests
@@ -25,6 +22,7 @@ import logging
 
 # Load environment variables
 load_dotenv()
+
 
 
 # Configure logger
@@ -46,10 +44,17 @@ migrate = Migrate(app, db)
 mail = Mail(app)
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
+
+from routes.user_route import user_bp
+from routes.task_route import task_bp
+from routes.report_route import report_bp
+
 app.register_blueprint(user_bp, url_prefix='/users')
 app.register_blueprint(task_bp, url_prefix='/tasks')
 app.register_blueprint(report_bp, url_prefix='/reports')
 
+# Create custom flask command
+from utils.task_reminders import send_reminder_email
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 OAUTHLIB_INSECURE_TRANSPORT = os.getenv("OAUTHLIB_INSECURE_TRANSPORT")
