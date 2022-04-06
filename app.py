@@ -1,4 +1,4 @@
-from flask import Flask, request, url_for
+from flask import Flask, redirect, request, url_for
 from flask_migrate import Migrate
 from models.user import db, User
 from models.session import Session
@@ -25,6 +25,7 @@ app.secret_key = os.urandom(32)
 
 mail = Mail(app)
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
+
 
 app.register_blueprint(user_bp, url_prefix='/users')
 app.register_blueprint(task_bp, url_prefix='/tasks')
@@ -86,8 +87,7 @@ def login():
 
     if not user.activated:
         return build_response(success=False, payload="",
-                          error="Please verify your email before logging in.")
-
+                              error="Please verify your email before logging in.")
 
     password = request.json['password']
 
@@ -97,8 +97,8 @@ def login():
             'exp': datetime.utcnow() + timedelta(hours=1)
         }, app.config['SECRET_KEY'])
 
-        #Convert token to string
-        token = token.decode("utf-8") 
+        # Convert token to string
+        token = token.decode("utf-8")
 
         session = Session(id=token, user_id=user.id)
         db.session.add(session)
@@ -112,12 +112,72 @@ def login():
                           error="Please check your login credentials!")
 
 
+@app.route('/forgot-password', methods=['POST'])
+def forgot_password():
+    email = request.json["email"]
+
+    user_exists = User.query.filter_by(email=email).first()
+
+    if not user_exists:
+        return build_response(success=False, payload="", error="User does not exist!")
+
+    token = serializer.dumps(email)
+
+    msg = Message("Reset Password",
+                  sender="testmahnoor@gmail.com", recipients=[email])
+
+    link = url_for('validate_reset_password', token=token, _external=True)
+    msg.body = f"Reset Password: {link}"
+    mail.send(msg)
+
+    return build_response(success=True, payload="Please follow the link sent to your email address to proceed.", error="")
+
+
+@app.route('/validate-reset-password/<token>', methods=['GET'])
+def validate_reset_password(token):
+    try:
+        email = serializer.loads(
+            token,
+            max_age=3600
+        )
+    except:
+        return build_response(success=False, payload="", error="The forgot password link is invalid or has expired.")
+
+    user = User.query.filter_by(email=email).first()
+
+    if not user:
+        return build_response(success=False, payload="", error="User doesn't exist")
+    
+    return build_response(success=True, payload="Verified!" , error="")
+
+
+@app.route('/reset-password/<token>', methods=['POST'])
+def reset_password(token):
+    try:
+        email = serializer.loads(
+            token,
+            max_age=3600
+        )
+    except:
+        return build_response(success=False, payload="", error="The forgot password link is invalid or has expired.")
+
+    user = User.query.filter_by(email=email).first()
+    hashed_password = generate_password_hash(
+        request.json['password'], method='sha256')
+
+    user.password = hashed_password
+    db.session.merge(user)
+    db.session.commit()
+
+    return build_response(success=True, payload="Password reset successful!", error="")
+
+
 @app.route('/logout')
 def logout():
-    token = request.cookies.get('access_token') 
+    token = request.cookies.get('access_token')
 
     if not token:
-            return build_response(success=False, payload="", error="Access token not provided!")   
+        return build_response(success=False, payload="", error="Access token not provided!")
 
     sess = Session.query.filter_by(id=token).first()
     db.session.delete(sess)
@@ -132,7 +192,7 @@ def logout():
 def page_not_found(e):
     return build_response(success=False, payload={}, error=e.description)
 
-    
+
 @app.errorhandler(HTTPException)
 def handle_exception(e):
     return build_response(success=False, payload={}, error=e.description)
