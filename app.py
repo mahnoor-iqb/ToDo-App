@@ -1,4 +1,5 @@
 from flask import Flask, redirect, request, url_for
+from flask_crontab import Crontab
 from flask_migrate import Migrate
 from models.user import db, User
 from models.session import Session
@@ -24,7 +25,6 @@ import logging
 load_dotenv()
 
 
-
 # Configure logger
 logging.basicConfig(filename= "logger.log", filemode='a', format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
     datefmt='%Y-%m-%d:%H:%M:%S',
@@ -45,6 +45,11 @@ mail = Mail(app)
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
 
+# Add a cron job for sending reminder emails
+crontab = Crontab(app)
+from utils.task_reminders import send_reminders
+
+
 from routes.user_route import user_bp
 from routes.task_route import task_bp
 from routes.report_route import report_bp
@@ -53,8 +58,6 @@ app.register_blueprint(user_bp, url_prefix='/users')
 app.register_blueprint(task_bp, url_prefix='/tasks')
 app.register_blueprint(report_bp, url_prefix='/reports')
 
-# Create custom flask command
-from utils.task_reminders import send_reminder_email
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 OAUTHLIB_INSECURE_TRANSPORT = os.getenv("OAUTHLIB_INSECURE_TRANSPORT")
