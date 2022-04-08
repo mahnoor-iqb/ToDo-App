@@ -13,12 +13,16 @@ import os
 import pathlib
 from routes.user_route import user_bp
 from routes.task_route import task_bp
+from routes.report_route import report_bp
 from utils.utils import build_response
 from pip._vendor import cachecontrol
 import google.auth.transport.requests
 from google.oauth2 import id_token
 import requests
+from dotenv import load_dotenv
 
+# Load environment variables
+load_dotenv()
 
 app = Flask(__name__)
 app.config.from_object('config')
@@ -26,18 +30,16 @@ app.config.from_object('config')
 db.init_app(app)
 migrate = Migrate(app, db)
 
-app.secret_key = os.urandom(32)
-
-os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
-
 mail = Mail(app)
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
-
 app.register_blueprint(user_bp, url_prefix='/users')
 app.register_blueprint(task_bp, url_prefix='/tasks')
+app.register_blueprint(report_bp, url_prefix='/reports')
 
-GOOGLE_CLIENT_ID = "809764277850-nh1et6mh6crfkab9jb9tgdd1t8of9kvl.apps.googleusercontent.com"
+
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+OAUTHLIB_INSECURE_TRANSPORT = os.getenv("OAUTHLIB_INSECURE_TRANSPORT")
 
 client_secrets_file = os.path.join(
     pathlib.Path(__file__).parent, "client_secret.json")

@@ -6,3 +6,5 @@ migrations/*
 __pycache__/*
 Downloads/*
 flask_session/*
+client_secret.json
+.env
