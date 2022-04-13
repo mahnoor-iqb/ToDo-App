@@ -6,6 +6,7 @@ from models.user import User
 from models.session import Session
 from flask import current_app
 import logging
+import string
 
 
 logger = logging.getLogger(__name__)
@@ -40,6 +41,8 @@ def token_required(f):
 
 
 def is_same(a,b):
-    a= a.lower().split(" ")
-    b = b.lower().split(" ")
+    # Remove punctuation, convert to lowercase and split to list
+    a = a.translate(str.maketrans('', '', string.punctuation)).lower().split(" ")
+    b = b.translate(str.maketrans('', '', string.punctuation)).lower().split(" ")
+
     return set(a)<=set(b) or set(b)<=set(a)
