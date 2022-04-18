@@ -6,6 +6,7 @@ import itertools
 import logging
 
 
+
 db = SQLAlchemy()
 
 logger = logging.getLogger(__name__)
@@ -120,4 +121,3 @@ def get_similar_tasks(current_user):
             similar_tasks.append([task1.id, task2.id])
     
     return build_response(success=True, payload= similar_tasks, error="")
-

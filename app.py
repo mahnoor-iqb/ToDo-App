@@ -1,4 +1,5 @@
 from flask import Flask, redirect, request, url_for
+from flask_crontab import Crontab
 from flask_migrate import Migrate
 from models.user import db, User
 from models.session import Session
@@ -11,9 +12,6 @@ from datetime import timedelta, datetime
 from google_auth_oauthlib.flow import Flow
 import os
 import pathlib
-from routes.user_route import user_bp
-from routes.task_route import task_bp
-from routes.report_route import report_bp
 from utils.utils import build_response
 from pip._vendor import cachecontrol
 import google.auth.transport.requests
@@ -45,6 +43,16 @@ migrate = Migrate(app, db)
 
 mail = Mail(app)
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
+
+
+# Add a cron job for sending reminder emails
+crontab = Crontab(app)
+from utils.task_reminders import send_reminders
+
+
+from routes.user_route import user_bp
+from routes.task_route import task_bp
+from routes.report_route import report_bp
 
 app.register_blueprint(user_bp, url_prefix='/users')
 app.register_blueprint(task_bp, url_prefix='/tasks')

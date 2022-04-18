@@ -7,6 +7,7 @@ from models.session import Session
 from flask import current_app
 import logging
 
+
 logger = logging.getLogger(__name__)
 
 def build_response(success, payload, error):
