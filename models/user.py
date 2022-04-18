@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
+from werkzeug.security import generate_password_hash
 
 db = SQLAlchemy()
 
@@ -15,6 +16,13 @@ class User(UserMixin, db.Model):
     tasks = db.relationship('Task')
     session = db.relationship('Session')
     
+    def __init__(self, email, password, admin = False, activated = False, oauth = False):
+        if password is not None:
+            self.password = generate_password_hash(password, method='sha256')
+        self.email = email
+        self.admin = admin
+        self.activated = activated
+        self.oauth = oauth
 
 
     @property

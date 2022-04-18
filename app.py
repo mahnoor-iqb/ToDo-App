@@ -134,16 +134,16 @@ def callback():
 
 @app.route('/signup', methods=['POST'])
 def register():
-    email = request.json["email"]
+    email = request.json.get("email")
+
+    if not email:
+        return build_response(success=False, payload="", error="Email not provided!")
 
     user_exists = User.query.filter_by(email=email).first()
 
     if user_exists:
         logger.error("User email already exists")
         return build_response(success=False, payload="", error="User email already exists!")
-
-    hashed_password = generate_password_hash(
-        request.json['password'], method='sha256')
 
     token = serializer.dumps(email)
 
@@ -155,8 +155,7 @@ def register():
 
     logger.info("Account confirmation email sent")
 
-    user = User(email=email, password=hashed_password,
-                admin=False, activated=False, oauth=False)
+    user = User(email=email, password= request.json['password'])
     db.session.add(user)
     db.session.commit()
     return build_response(success=True, payload="Confirmation email has been sent. Please confirm your email.", error="")
@@ -285,9 +284,8 @@ def reset_password(token):
         return build_response(success=False, payload="", error="The forgot password link is invalid or has expired.")
 
     user = User.query.filter_by(email=email).first()
-    hashed_password = generate_password_hash(
-        request.json['password'], method='sha256')
 
+    hashed_password = generate_password_hash(request.json['password'], method='sha256')
     user.password = hashed_password
     db.session.merge(user)
     db.session.commit()
