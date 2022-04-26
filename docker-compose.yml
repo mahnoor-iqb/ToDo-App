@@ -1,0 +1,26 @@
+version: '3'
+
+services:
+  backend:
+    build: .
+    container_name: flask_app
+    links:
+      - db
+    depends_on:
+      - db
+    volumes:
+      - ./:/app
+    ports:
+      - "5000:5000"
+
+  db:
+    container_name: flask_sqlite
+    image: nouchka/sqlite3:latest
+    stdin_open: true
+    tty: true
+    volumes:
+      - sqlite_data:/var/lib/sqlite3
+
+volumes:
+  sqlite_data:
+    driver: local
