@@ -6,6 +6,7 @@ from flask_sqlalchemy import SQLAlchemy
 from utils.utils import build_response, token_required
 import os
 import logging
+from config import basedir
 
 db = SQLAlchemy()
 
@@ -141,7 +142,7 @@ def attach_file(current_user, task_id):
         return build_response(success=False, payload="", error="Permission Denied!")
 
     file = request.files["file_attachment"]
-    user_dir = "/home/emumba/Desktop/ToDo-App/Downloads/user"+str(task.user_id)
+    user_dir = os.path.join(basedir, f'Downloads/user{task.user_id}')
 
     if os.path.exists(user_dir):
         file.save(os.path.join(user_dir, file.filename))
@@ -171,7 +172,7 @@ def download_file(current_user, task_id):
         logger.error("Permission denied")
         return build_response(success=False, payload="", error="Permission Denied!")
 
-    user_dir = "/home/emumba/Desktop/ToDo-App/Downloads/user"+str(task.user_id)
+    user_dir = os.path.join(basedir, f'Downloads/user{task.user_id}')
 
     logger.info("File download successful")
     return send_file(user_dir+ "/"+task.file_attachment, as_attachment=True)
